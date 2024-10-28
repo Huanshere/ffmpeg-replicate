@@ -6,6 +6,8 @@ from io import BytesIO
 import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from cog import BasePredictor, Input, Path
+os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
+
 
 # 字幕样式常量
 SRC_FONT_SIZE = 18  # 源语言字幕字体大小
@@ -25,17 +27,15 @@ TRANS_BG_COLOR = '&H40000000'  # 翻译字幕背景颜色（25%透明黑色）
 # FONT_NAME = 'Arial'
 # TRANS_FONT_NAME = 'Arial'
 
-FONT_PATH = "fonts/HelveticaNeue-MediumCond.otf"
-TRANS_FONT_PATH = "fonts/MiSans-Medium.ttf"
+# FONT_PATH = "fonts/HelveticaNeue-MediumCond.otf"
+# TRANS_FONT_PATH = "fonts/MiSans-Medium.ttf"
+FONT_NAME = 'HelveticaNeue-MediumCond'
+TRANS_FONT_NAME = 'MiSans Medium'
 
 class Predictor(BasePredictor):
     def setup(self):
         """初始化设置"""
-        # 确保字体文件存在
-        if not Path(FONT_PATH).exists() or not Path(TRANS_FONT_PATH).exists():
-            raise RuntimeError("Required font files not found")
-        else:
-            print(f"🎉 Font files found, using {FONT_PATH} and {TRANS_FONT_PATH}")
+        pass
 
     def predict(
         self,
@@ -73,10 +73,10 @@ class Predictor(BasePredictor):
                 'ffmpeg', '-i', video_file,
                 '-vf', (
                     f"scale=-2:{target_height},"
-                    f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},fontfile={os.path.abspath(FONT_PATH)},"
+                    f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
                     f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                     f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                    f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},fontfile={os.path.abspath(TRANS_FONT_PATH)},"
+                    f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
                     f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                     f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                 ).encode('utf-8'),
