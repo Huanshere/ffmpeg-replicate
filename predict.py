@@ -112,5 +112,10 @@ class Predictor(BasePredictor):
 
             # 将处理后的视频读入BytesIO对象
             output_files["video"] = BytesIO(open(temp_output.name, "rb").read())
+            
+        # 删除临时文件
+        os.remove(video_file)
+        os.remove(source_srt_file)
+        os.remove(translated_srt_file)
 
         return output_files
