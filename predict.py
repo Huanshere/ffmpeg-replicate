@@ -24,12 +24,15 @@ TRANS_BG_COLOR = '&H40000000'  # 翻译字幕背景颜色（25%透明黑色）
 # FONT_NAME = 'Arial'
 # TRANS_FONT_NAME = 'Arial'
 
-FONT_NAME = 'HelveticaNeue-MediumCond'
-TRANS_FONT_NAME = 'MiSans Medium'
+FONT_PATH = "./fonts/HelveticaNeue-MediumCond.otf"
+TRANS_FONT_PATH = "./fonts/MiSans-Medium.ttf"
 
 class Predictor(BasePredictor):
     def setup(self):
         """初始化设置"""
+        # 确保字体文件存在
+        if not Path(FONT_PATH).exists() or not Path(TRANS_FONT_PATH).exists():
+            raise RuntimeError("Required font files not found")
         pass
 
     def predict(
@@ -71,10 +74,10 @@ class Predictor(BasePredictor):
                         'ffmpeg', '-i', video_file,
                         '-vf', (
                             f"scale=-2:{target_height},"
-                            f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                            f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontFile={FONT_PATH},"
                             f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                             f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                            f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                            f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontFile={TRANS_FONT_PATH},"
                             f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                             f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                         ).encode('utf-8'),
@@ -110,10 +113,10 @@ class Predictor(BasePredictor):
                         'ffmpeg', '-i', video_file,
                         '-vf', (
                             f"scale=-2:{target_height},"
-                            f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                            f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontFile={FONT_PATH},"  # 使用 FontFile 替代 FontName
                             f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                             f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                            f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                            f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontFile={TRANS_FONT_PATH},"  # 使用 FontFile 替代 FontName
                             f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                             f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                         ).encode('utf-8'),
@@ -138,10 +141,10 @@ class Predictor(BasePredictor):
                     'ffmpeg', '-i', video_file,
                     '-vf', (
                         f"scale=-2:{target_height},"
-                        f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                        f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontFile={FONT_PATH},"  # 使用 FontFile 替代 FontName
                         f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                         f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                        f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                        f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontFile={TRANS_FONT_PATH},"  # 使用 FontFile 替代 FontName
                         f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                         f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                     ).encode('utf-8'),
