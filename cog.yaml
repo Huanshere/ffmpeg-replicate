@@ -5,9 +5,12 @@ build:
     - "ffmpeg"
     - "fontconfig"
   python_version: "3.10"
+  python_packages:
+    - "."
   run:
     - pwd
-    - ls -la
+    - mkdir -p fonts/
+    - cp -r /src/fonts/* fonts/
     - ls -la fonts/
     - mkdir -p /usr/local/share/fonts
     - cp fonts/MiSans-Medium.ttf /usr/local/share/fonts/
