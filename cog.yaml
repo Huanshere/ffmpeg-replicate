@@ -6,6 +6,9 @@ build:
     - "fontconfig"
   python_version: "3.10"
   run:
+    - pwd
+    - ls -la
+    - ls -la fonts/
     - mkdir -p /usr/local/share/fonts
     - cp fonts/MiSans-Medium.ttf /usr/local/share/fonts/
     - cp fonts/HelveticaNeue-MediumCond.otf /usr/local/share/fonts/
