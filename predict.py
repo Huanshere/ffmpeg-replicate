@@ -3,7 +3,6 @@ import subprocess
 import time
 import requests
 from io import BytesIO
-from typing import Optional
 from cog import BasePredictor, Input, Path
 
 # 字幕样式常量
@@ -97,6 +96,17 @@ class Predictor(BasePredictor):
                 universal_newlines=True,
                 encoding='utf-8'
             )
+            
+            # 读取并显示进度
+            while True:
+                stderr_line = process.stderr.readline()
+                if not stderr_line and process.poll() is not None:
+                    break
+                
+                if stderr_line:
+                    # 查找包含时间信息的行
+                    if "time=" in stderr_line:
+                        print(f"\r进度: {stderr_line.strip()}", end='', flush=True)
             
             # 等待处理完成
             process.wait()
