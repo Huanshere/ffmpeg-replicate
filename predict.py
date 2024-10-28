@@ -16,7 +16,7 @@ if not os.path.exists(FONTS_DIR):
 def install_fonts():
     system_font_dir = "/usr/share/fonts/truetype/custom"
     if not os.path.exists(system_font_dir):
-        subprocess.run(['sudo', 'mkdir', '-p', system_font_dir])
+        os.makedirs(system_font_dir)
     
     # 复制字体文件
     font_files = [
@@ -27,11 +27,11 @@ def install_fonts():
     for src, filename in font_files:
         dest = os.path.join(system_font_dir, filename)
         if not os.path.exists(dest):
-            subprocess.run(['sudo', 'cp', src, dest])
-            subprocess.run(['sudo', 'chmod', '644', dest])
+            subprocess.run(['cp', src, dest])
+            os.chmod(dest, 0o644)
     
     # 更新字体缓存
-    subprocess.run(['sudo', 'fc-cache', '-f', '-v'])
+    subprocess.run(['fc-cache', '-f', '-v'])
 
 # 字幕样式常量
 SRC_FONT_SIZE = 18  # 源语言字幕字体大小
