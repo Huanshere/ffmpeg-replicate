@@ -34,7 +34,8 @@ class Predictor(BasePredictor):
         # 确保字体文件存在
         if not Path(FONT_PATH).exists() or not Path(TRANS_FONT_PATH).exists():
             raise RuntimeError("Required font files not found")
-        pass
+        else:
+            print(f"🎉 Font files found, using {FONT_PATH} and {TRANS_FONT_PATH}")
 
     def predict(
         self,
