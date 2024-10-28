@@ -4,18 +4,16 @@ import time
 import requests
 from io import BytesIO
 import os, sys
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.abspath(__file__))
 from cog import BasePredictor, Input, Path
 os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
 subprocess.run(['fc-cache', '-f', '-v'])
 # 检查字体是否正确安装
 print("检查字体安装情况...")
-print("MiSans字体:")
-subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans'], shell=True)
-print("\nHelveticaNeue字体:")  
-subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue'], shell=True)
-
-
+print("MiSans Medium字体:")
+subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans Medium'], shell=True)
+print("\nHelveticaNeue-MediumCond字体:")  
+subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue-MediumCond'], shell=True)
 
 # 字幕样式常量
 SRC_FONT_SIZE = 18  # 源语言字幕字体大小
@@ -31,9 +29,6 @@ SRC_MARGIN_V = 20 # 源语言字幕距离底部边距
 TRANS_MARGIN_V = 38 # 翻译字幕距离底部边距
 TRANS_SPACING = 1 # 翻译字幕字间距
 TRANS_BG_COLOR = '&H40000000'  # 翻译字幕背景颜色（25%透明黑色）
-
-# FONT_NAME = 'Arial'
-# TRANS_FONT_NAME = 'Arial'
 
 FONT_PATH = "fonts/HelveticaNeue-MediumCond.otf"
 TRANS_FONT_PATH = "fonts/MiSans-Medium.ttf"
