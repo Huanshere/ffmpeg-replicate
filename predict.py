@@ -6,14 +6,32 @@ from io import BytesIO
 import os, sys
 sys.path.append(os.path.abspath(__file__))
 from cog import BasePredictor, Input, Path
-os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
-subprocess.run(['fc-cache', '-f', '-v'])
-# 检查字体是否正确安装
-print("检查字体安装情况...")
-print("MiSans Medium字体:")
-subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans Medium'], shell=True)
-print("\nHelveticaNeue-MediumCond字体:")  
-subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue-MediumCond'], shell=True)
+
+# 确保字体目录存在
+FONTS_DIR = "fonts"
+if not os.path.exists(FONTS_DIR):
+    os.makedirs(FONTS_DIR)
+
+# 复制字体文件到系统字体目录
+def install_fonts():
+    system_font_dir = "/usr/share/fonts/truetype/custom"
+    if not os.path.exists(system_font_dir):
+        subprocess.run(['sudo', 'mkdir', '-p', system_font_dir])
+    
+    # 复制字体文件
+    font_files = [
+        (FONT_PATH, "HelveticaNeue-MediumCond.otf"),
+        (TRANS_FONT_PATH, "MiSans-Medium.ttf")
+    ]
+    
+    for src, filename in font_files:
+        dest = os.path.join(system_font_dir, filename)
+        if not os.path.exists(dest):
+            subprocess.run(['sudo', 'cp', src, dest])
+            subprocess.run(['sudo', 'chmod', '644', dest])
+    
+    # 更新字体缓存
+    subprocess.run(['sudo', 'fc-cache', '-f', '-v'])
 
 # 字幕样式常量
 SRC_FONT_SIZE = 18  # 源语言字幕字体大小
@@ -39,7 +57,14 @@ TRANS_FONT_NAME = 'MiSans Medium'
 class Predictor(BasePredictor):
     def setup(self):
         """初始化设置"""
-        pass
+        install_fonts()
+        
+        # 验证字体安装
+        print("检查字体安装情况...")
+        print("MiSans Medium字体:")
+        subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans'], shell=True)
+        print("\nHelveticaNeue-MediumCond字体:")  
+        subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue'], shell=True)
 
     def predict(
         self,
