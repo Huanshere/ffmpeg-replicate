@@ -73,21 +73,21 @@ class Predictor(BasePredictor):
                 'ffmpeg', '-i', video_file,
                 '-vf', (
                     f"scale=-2:{target_height},"
-                    # 使用绝对路径
-                    f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={os.path.abspath(FONT_PATH)},"
+                    f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},fontfile={os.path.abspath(FONT_PATH)},"
                     f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                     f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                    f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={os.path.abspath(TRANS_FONT_PATH)},"
+                    f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},fontfile={os.path.abspath(TRANS_FONT_PATH)},"
                     f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                     f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                 ).encode('utf-8'),
                 '-c:v', 'h264_nvenc',
                 '-preset', 'p4',
                 '-rc:v', 'vbr',
-                '-cq:v', '36',       # 提高 CQ 值（原来是24，越大压缩率越高，画质略降）
+                '-cq:v', '36',
                 '-y',
                 temp_output.name
             ]
+
             
             print("🚀 使用NVIDIA GPU处理中...")
             process = subprocess.Popen(
