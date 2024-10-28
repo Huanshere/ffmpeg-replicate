@@ -50,6 +50,7 @@ class Predictor(BasePredictor):
 
         output_files = {}
         
+        start_time = time.time()
         # 使用临时文件处理视频
         with tempfile.NamedTemporaryFile(suffix=f".{output_format}") as temp_output:
             # 尝试使用GPU加速，如果失败则回退到CPU
