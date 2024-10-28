@@ -104,9 +104,7 @@ class Predictor(BasePredictor):
                     break
                 
                 if stderr_line:
-                    # 查找包含时间信息的行
-                    if "time=" in stderr_line:
-                        print(f"\r进度: {stderr_line.strip()}", end='', flush=True)
+                    print(f"\r进度: {stderr_line.strip()}", end='', flush=True)
             
             # 等待处理完成
             process.wait()
