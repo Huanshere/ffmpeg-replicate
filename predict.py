@@ -33,13 +33,8 @@ class Predictor(BasePredictor):
     def predict(
         self,
         video_url: str = Input(description="视频URL链接"),
-        source_srt: Path = Input(description="原文字幕文件(srt格式)"),
-        translated_srt: Path = Input(description="翻译字幕文件(srt格式)"),
-        output_format: str = Input(
-            default="mp4",
-            description="输出视频格式",
-            choices=["mp4", "mkv"]
-        )
+        source_srt_url: str = Input(description="原文字幕URL链接(srt格式)"),
+        translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式)"),
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
@@ -48,11 +43,23 @@ class Predictor(BasePredictor):
             temp_video.write(video_data.content)
             video_file = temp_video.name
 
+        # 下载字幕文件
+        print("📥 Downloading subtitles...")
+        with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as temp_source_srt:
+            source_srt_data = requests.get(source_srt_url)
+            temp_source_srt.write(source_srt_data.content)
+            source_srt_file = temp_source_srt.name
+
+        with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as temp_translated_srt:
+            translated_srt_data = requests.get(translated_srt_url)
+            temp_translated_srt.write(translated_srt_data.content)
+            translated_srt_file = temp_translated_srt.name
+
         output_files = {}
         
         start_time = time.time()
         # 使用临时文件处理视频
-        with tempfile.NamedTemporaryFile(suffix=f".{output_format}") as temp_output:
+        with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_output:
             # 尝试使用GPU加速，如果失败则回退到CPU
             try:
                 # 首先尝试NVIDIA GPU编码
@@ -60,10 +67,10 @@ class Predictor(BasePredictor):
                     'ffmpeg', '-i', video_file,
                     '-vf', (
                         f"scale=-2:{TARGET_HEIGHT},"
-                        f"subtitles={source_srt}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                        f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
                         f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                         f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                        f"subtitles={translated_srt}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                        f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
                         f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                         f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                     ).encode('utf-8'),
@@ -98,10 +105,10 @@ class Predictor(BasePredictor):
                     'ffmpeg', '-i', video_file,
                     '-vf', (
                         f"scale=-2:{TARGET_HEIGHT},"
-                        f"subtitles={source_srt}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                        f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
                         f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
                         f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                        f"subtitles={translated_srt}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                        f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
                         f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                         f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
                     ).encode('utf-8'),
