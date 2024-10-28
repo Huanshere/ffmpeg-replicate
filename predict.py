@@ -3,6 +3,8 @@ import subprocess
 import time
 import requests
 from io import BytesIO
+import os, sys
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from cog import BasePredictor, Input, Path
 
 # 字幕样式常量
@@ -80,10 +82,7 @@ class Predictor(BasePredictor):
                 '-c:v', 'h264_nvenc',
                 '-preset', 'p4',
                 '-rc:v', 'vbr',
-                # '-b:v', '1M',        # 添加目标比特率限制
-                # '-maxrate', '2M',    # 最大比特率
-                # '-bufsize', '2M',    # 缓冲区大小
-                '-cq:v', '28',       # 提高 CQ 值（原来是24，越大压缩率越高，画质略降）
+                '-cq:v', '36',       # 提高 CQ 值（原来是24，越大压缩率越高，画质略降）
                 '-y',
                 temp_output.name
             ]
