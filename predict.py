@@ -24,8 +24,8 @@ TRANS_BG_COLOR = '&H40000000'  # 翻译字幕背景颜色（25%透明黑色）
 # FONT_NAME = 'Arial'
 # TRANS_FONT_NAME = 'Arial'
 
-FONT_PATH = "./fonts/HelveticaNeue-MediumCond.otf"
-TRANS_FONT_PATH = "./fonts/MiSans-Medium.ttf"
+FONT_PATH = "fonts/HelveticaNeue-MediumCond.otf"
+TRANS_FONT_PATH = "fonts/MiSans-Medium.ttf"
 
 class Predictor(BasePredictor):
     def setup(self):
@@ -40,8 +40,7 @@ class Predictor(BasePredictor):
         video_url: str = Input(description="视频URL链接"),
         source_srt_url: str = Input(description="原文字幕URL链接(srt格式)"),
         translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式)"),
-        use_gpu: bool = Input(description="是否使用GPU加速", default=True),
-        target_height: int = Input(description="输出视频高度", default=480),  # 新增参数
+        target_height: int = Input(description="输出视频高度", default=480),
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
@@ -67,102 +66,37 @@ class Predictor(BasePredictor):
         start_time = time.time()
         # 使用临时文件处理视频
         with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_output:
-            if use_gpu:
-                try:
-                    # 首先尝试NVIDIA GPU编码
-                    ffmpeg_cmd = [
-                        'ffmpeg', '-i', video_file,
-                        '-vf', (
-                            f"scale=-2:{target_height},"
-                            f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontFile={FONT_PATH},"
-                            f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
-                            f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                            f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontFile={TRANS_FONT_PATH},"
-                            f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
-                            f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
-                        ).encode('utf-8'),
-                        '-c:v', 'h264_nvenc',
-                        '-preset', 'p4',
-                        '-rc:v', 'vbr',
-                        '-cq:v', '24',
-                        '-y',
-                        temp_output.name
-                    ]
-                    
-                    print("🚀 尝试使用NVIDIA GPU加速处理...")
-                    process = subprocess.Popen(
-                        ffmpeg_cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        universal_newlines=True,
-                        encoding='utf-8'
-                    )
-                    
-                    # 检查是否成功启动GPU编码
-                    stdout, stderr = process.communicate()
-                    if process.returncode != 0:
-                        raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
-                    
-                    print("✅ 成功使用NVIDIA GPU加速处理")
-                    
-                except (subprocess.CalledProcessError, FileNotFoundError) as e:
-                    if use_gpu:
-                        print("⚠️ GPU加速失败，切换到CPU处理...")
-                    # 回退到CPU处理
-                    ffmpeg_cmd = [
-                        'ffmpeg', '-i', video_file,
-                        '-vf', (
-                            f"scale=-2:{target_height},"
-                            f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontFile={FONT_PATH},"  # 使用 FontFile 替代 FontName
-                            f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
-                            f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                            f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontFile={TRANS_FONT_PATH},"  # 使用 FontFile 替代 FontName
-                            f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
-                            f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
-                        ).encode('utf-8'),
-                        '-c:v', 'libx264',  # 使用CPU编码器
-                        '-preset', 'medium',
-                        '-crf', '23',
-                        '-y',
-                        temp_output.name
-                    ]
-                    
-                    process = subprocess.Popen(
-                        ffmpeg_cmd,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        universal_newlines=True,
-                        encoding='utf-8'
-                    )
-                    print("🖥️ 使用CPU处理中...")
-            else:
-                # 直接使用CPU处理
-                ffmpeg_cmd = [
-                    'ffmpeg', '-i', video_file,
-                    '-vf', (
-                        f"scale=-2:{target_height},"
-                        f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontFile={FONT_PATH},"  # 使用 FontFile 替代 FontName
-                        f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
-                        f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                        f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontFile={TRANS_FONT_PATH},"  # 使用 FontFile 替代 FontName
-                        f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
-                        f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
-                    ).encode('utf-8'),
-                    '-c:v', 'libx264',  # 使用CPU编码器
-                    '-preset', 'medium',
-                    '-crf', '23',
-                    '-y',
-                    temp_output.name
-                ]
-                
-                process = subprocess.Popen(
-                    ffmpeg_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                    encoding='utf-8'
-                )
-                print("🖥️ 使用CPU处理中...")
+            # 使用NVIDIA GPU编码
+            ffmpeg_cmd = [
+                'ffmpeg', '-i', video_file,
+                '-vf', (
+                    f"scale=-2:{target_height},"
+                    f"subtitles={source_srt_file}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_PATH},"
+                    f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
+                    f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
+                    f"subtitles={translated_srt_file}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_PATH},"
+                    f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
+                    f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
+                ).encode('utf-8'),
+                '-c:v', 'h264_nvenc',
+                '-preset', 'p4',
+                '-rc:v', 'vbr',
+                '-b:v', '1M',        # 添加目标比特率限制
+                '-maxrate', '2M',    # 最大比特率
+                '-bufsize', '2M',    # 缓冲区大小
+                '-cq:v', '28',       # 提高 CQ 值（原来是24，越大压缩率越高，画质略降）
+                '-y',
+                temp_output.name
+            ]
+            
+            print("🚀 使用NVIDIA GPU处理中...")
+            process = subprocess.Popen(
+                ffmpeg_cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                universal_newlines=True,
+                encoding='utf-8'
+            )
             
             # 等待处理完成
             process.wait()
