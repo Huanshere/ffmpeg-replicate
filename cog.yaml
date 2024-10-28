@@ -8,7 +8,7 @@ build:
   run:
     - pwd
     - mkdir -p fonts/
-    - cp -r /src/fonts/* fonts/
+    - cp -r fonts/* fonts/
     - ls -la fonts/
     - mkdir -p /usr/local/share/fonts
     - cp fonts/MiSans-Medium.ttf /usr/local/share/fonts/
