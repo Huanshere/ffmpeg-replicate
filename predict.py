@@ -60,11 +60,11 @@ class Predictor(BasePredictor):
         install_fonts()
         
         # 验证字体安装
-        print("检查字体安装情况...")
-        print("MiSans Medium字体:")
-        subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans'], shell=True)
-        print("\nHelveticaNeue-MediumCond字体:")  
-        subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue'], shell=True)
+        # print("检查字体安装情况...")
+        # print("MiSans Medium字体:")
+        # subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans'], shell=True)
+        # print("\nHelveticaNeue-MediumCond字体:")  
+        # subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue'], shell=True)
 
     def predict(
         self,
