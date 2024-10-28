@@ -1,200 +1,130 @@
 import tempfile
+import subprocess
+import time
+import requests
 from io import BytesIO
 from typing import Optional
-
-import torch
 from cog import BasePredictor, Input, Path
-from torch.cuda import is_available as is_cuda_available
 
-from demucs.api import Separator
-from demucs.apply import BagOfModels
-from demucs.audio import save_audio
-from demucs.htdemucs import HTDemucs
-from demucs.pretrained import get_model
+# 字幕样式常量
+TARGET_HEIGHT = 480
+SRC_FONT_SIZE = 18  # 源语言字幕字体大小
+TRANS_FONT_SIZE = 24  # 翻译字幕字体大小
+SRC_FONT_COLOR = '&HFFFFFF'  # 源语言字幕字体颜色（白色）
+SRC_OUTLINE_COLOR = '&H000000'  # 源语言字幕轮廓颜色（黑色）
+SRC_OUTLINE_WIDTH = 1  # 源语言字幕轮廓宽度
+TRANS_FONT_COLOR = '&HFFFFFF'
+TRANS_OUTLINE_COLOR = '&H000000'  # 翻译字幕轮廓颜色（黑色）
+TRANS_OUTLINE_WIDTH = 1  # 翻译字幕轮廓宽度
 
-# The demucs API does have a method to get all models but it
-# returns models we don't want so it's easier to manually curate
-DEMUCS_MODELS = [
-    # Demucs v4
-    "htdemucs",
-    "htdemucs_ft",
-    "htdemucs_6s",
-    # Demucs v3
-    "hdemucs_mmi",
-    # Demucs v2
-    # I'm not including the non-quantized versions because
-    # according to the author, there is no quality degradation
-    # so this should just help speed up boot times
-    "mdx_q",
-    "mdx_extra_q",
-]
+SRC_MARGIN_V = 20 # 源语言字幕距离底部边距
+TRANS_MARGIN_V = 38 # 翻译字幕距离底部边距
+TRANS_SPACING = 1 # 翻译字幕字间距
+TRANS_BG_COLOR = '&H40000000'  # 翻译字幕背景颜色（25%透明黑色）
 
-
-class PreloadedSeparator(Separator):
-    """
-    For efficiency, this cog keeps the models in memory
-    so that they don't need to be loaded for every single request.
-
-    The Separator API only supports loading models by name, so
-    we have to subclass it and load the model manually.
-    """
-
-    def __init__(
-        self,
-        model: BagOfModels,
-        shifts: int = 1,
-        overlap: float = 0.25,
-        split: bool = True,
-        segment: Optional[int] = None,
-        jobs: int = 0,
-    ):
-        self._model = model
-        self._audio_channels = model.audio_channels
-        self._samplerate = model.samplerate
-
-        self.update_parameter(
-            device="cuda" if is_cuda_available() else "cpu",
-            shifts=shifts,
-            overlap=overlap,
-            split=split,
-            segment=segment,
-            jobs=jobs,
-            progress=True,
-            callback=None,
-            callback_arg=None,
-        )
-
+FONT_NAME = 'Arial'
+TRANS_FONT_NAME = 'Arial'
 
 class Predictor(BasePredictor):
-    """
-    This cog implements the Cog API to inference Demucs models.
-    """
-
     def setup(self):
-        """
-        Loading the models into memory will provide faster prediction
-        when multiple requests are made in succession.
-        """
-        self.models = {model: get_model(model) for model in DEMUCS_MODELS}
+        """初始化设置"""
+        pass
 
     def predict(
         self,
-        audio: Path = Input(description="Upload the file to be processed here."),
-        model: str = Input(
-            default="htdemucs",
-            description="Choose the demucs audio that proccesses your audio. The readme has more information on what to choose.",
-            choices=DEMUCS_MODELS,
-        ),
-        stem: str = Input(
-            default="none",
-            description="If you just want to isolate one stem, you can choose it here.",
-            choices=["none", "drums", "bass", "other", "vocals", "guitar", "piano"],
-        ),
-        # Audio Options
+        video_url: str = Input(description="视频URL链接"),
+        source_srt: Path = Input(description="原文字幕文件(srt格式)"),
+        translated_srt: Path = Input(description="翻译字幕文件(srt格式)"),
         output_format: str = Input(
-            default="mp3",
-            description="Choose the audio format you would like the result to be returned in.",
-            choices=["mp3", "flac", "wav"],
-        ),
-        mp3_bitrate: int = Input(
-            default=320,
-            description="Choose the bitrate for the MP3 output. Higher is better quality but larger file size. If MP3 is not selected as the output type, this has no effect.",
-        ),
-        mp3_preset: int = Input(
-            default=2,
-            choices=range(2, 8),
-            description="Choose the preset for the MP3 output. Higher is faster but worse quality. If MP3 is not selected as the output type, this has no effect.",
-        ),
-        wav_format: str = Input(
-            default="int24",
-            choices=["int16", "int24", "float32"],
-            description="Choose format for the WAV output. If WAV is not selected as the output type, this has no effect.",
-        ),
-        clip_mode: str = Input(
-            default="rescale",
-            choices=["rescale", "clamp", "none"],
-            description="Choose the strategy for avoiding clipping. Rescale will rescale entire signal if necessary or clamp will allow hard clipping.",
-        ),
-        # Separator Options
-        shifts: int = Input(
-            default=1,
-            description="Choose the amount random shifts for equivariant stabilization. This performs multiple predictions with random shifts of the input and averages them, which makes it x times slower.",
-        ),
-        overlap: float = Input(
-            default=0.25,
-            description="Choose the amount of overlap between prediction windows.",
-        ),
-        split: bool = Input(
-            default=True,
-            description="Choose whether or not the audio should be split into chunks.",
-        ),
-        segment: int = Input(
-            default=None,
-            description="Choose the segment length to use for separation.",
-        ),
-        jobs: int = Input(
-            default=0,
-            description="Choose the number of parallel jobs to use for separation.",
-        ),
-    ) -> dict:
-        # Use preloaded model
-        model = self.models[model]
-
-        if stem != "none" and stem not in model.sources:
-            raise ValueError(
-                f"Selected stem '{stem}' is not supported by chosen model."
-            )
-
-        max_allowed_segment = float("inf")
-        if isinstance(model, HTDemucs):
-            max_allowed_segment = float(model.segment)
-        elif isinstance(model, BagOfModels):
-            max_allowed_segment = model.max_allowed_segment
-
-        if segment is not None and segment > max_allowed_segment:
-            raise ValueError(
-                f"Cannot use a Transformer model with a longer segment than it was trained for. Maximum allowed segment is {max_allowed_segment}."
-            )
-
-        separator = PreloadedSeparator(
-            model=model,
-            shifts=shifts,
-            overlap=overlap,
-            segment=segment,
-            split=split,
-            jobs=jobs,
+            default="mp4",
+            description="输出视频格式",
+            choices=["mp4", "mkv"]
         )
+    ) -> dict:
+        # 下载视频
+        print("📥 Downloading video...")
+        video_data = requests.get(video_url)
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+            temp_video.write(video_data.content)
+            video_file = temp_video.name
 
-        _, outputs = separator.separate_audio_file(audio)
+        output_files = {}
+        
+        # 使用临时文件处理视频
+        with tempfile.NamedTemporaryFile(suffix=f".{output_format}") as temp_output:
+            # 尝试使用GPU加速，如果失败则回退到CPU
+            try:
+                # 首先尝试NVIDIA GPU编码
+                ffmpeg_cmd = [
+                    'ffmpeg', '-i', video_file,
+                    '-vf', (
+                        f"scale=-2:{TARGET_HEIGHT},"
+                        f"subtitles={source_srt}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                        f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
+                        f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
+                        f"subtitles={translated_srt}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                        f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
+                        f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
+                    ).encode('utf-8'),
+                    '-c:v', 'h264_nvenc',
+                    '-preset', 'p4',
+                    '-rc:v', 'vbr',
+                    '-cq:v', '24',
+                    '-y',
+                    temp_output.name
+                ]
+                
+                print("🚀 尝试使用NVIDIA GPU加速处理...")
+                process = subprocess.Popen(
+                    ffmpeg_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    encoding='utf-8'
+                )
+                
+                # 检查是否成功启动GPU编码
+                stdout, stderr = process.communicate()
+                if process.returncode != 0:
+                    raise subprocess.CalledProcessError(process.returncode, ffmpeg_cmd)
+                
+                print("✅ 成功使用NVIDIA GPU加速处理")
+                
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                print("⚠️ GPU加速失败，切换到CPU处理...")
+                # 回退到CPU处理
+                ffmpeg_cmd = [
+                    'ffmpeg', '-i', video_file,
+                    '-vf', (
+                        f"scale=-2:{TARGET_HEIGHT},"
+                        f"subtitles={source_srt}:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                        f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
+                        f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
+                        f"subtitles={translated_srt}:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                        f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
+                        f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
+                    ).encode('utf-8'),
+                    '-c:v', 'libx264',  # 使用CPU编码器
+                    '-preset', 'medium',
+                    '-crf', '23',
+                    '-y',
+                    temp_output.name
+                ]
+                
+                process = subprocess.Popen(
+                    ffmpeg_cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    encoding='utf-8'
+                )
+                print("🖥️ 使用CPU处理中...")
+            
+            # 等待处理完成
+            process.wait()
+            print(f"✨ Video processing completed in {time.time() - start_time:.2f} seconds")
 
-        kwargs = {
-            "samplerate": separator.samplerate,
-            "bitrate": mp3_bitrate,
-            "preset": mp3_preset,
-            "clip": clip_mode,
-            "as_float": wav_format == "float32",
-            "bits_per_sample": 24 if wav_format == "int24" else 16,
-        }
+            # 将处理后的视频读入BytesIO对象
+            output_files["video"] = BytesIO(open(temp_output.name, "rb").read())
 
-        output_stems = {}
-
-        if stem == "none":
-            for name, source in outputs.items():
-                with tempfile.NamedTemporaryFile(suffix=f".{output_format}") as f:
-                    save_audio(source.cpu(), f.name, **kwargs)
-                    output_stems[name] = BytesIO(open(f.name, "rb").read())
-        else:
-            with tempfile.NamedTemporaryFile(suffix=f".{output_format}") as f:
-                save_audio(outputs[stem].cpu(), f.name, **kwargs)
-                output_stems[stem] = BytesIO(open(f.name, "rb").read())
-
-            other_stem = torch.zeros_like(outputs[stem])
-            for source, audio in outputs.items():
-                if source != stem:
-                    other_stem += audio
-
-            with tempfile.NamedTemporaryFile(suffix=f".{output_format}") as f:
-                save_audio(other_stem.cpu(), f.name, **kwargs)
-                output_stems["no_" + stem] = BytesIO(open(f.name, "rb").read())
-
-        return output_stems
+        return output_files
