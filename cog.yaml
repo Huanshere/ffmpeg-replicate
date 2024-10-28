@@ -3,5 +3,11 @@ build:
   cuda: "11.8"
   system_packages:
     - "ffmpeg"
+    - "fontconfig"
   python_version: "3.10"
+  run:
+    - mkdir -p /usr/local/share/fonts
+    - cp fonts/MiSans-Medium.ttf /usr/local/share/fonts/
+    - cp fonts/HelveticaNeue-MediumCond.otf /usr/local/share/fonts/
+    - fc-cache -f -v
 predict: "predict.py:Predictor"
