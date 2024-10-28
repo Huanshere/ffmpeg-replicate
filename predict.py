@@ -7,6 +7,14 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from cog import BasePredictor, Input, Path
 os.environ['FONTCONFIG_FILE'] = 'fonts.conf'
+subprocess.run(['fc-cache', '-f', '-v'])
+# 检查字体是否正确安装
+print("检查字体安装情况...")
+print("MiSans字体:")
+subprocess.run(['fc-list', '|', 'grep', '-i', 'MiSans'], shell=True)
+print("\nHelveticaNeue字体:")  
+subprocess.run(['fc-list', '|', 'grep', '-i', 'HelveticaNeue'], shell=True)
+
 
 
 # 字幕样式常量
