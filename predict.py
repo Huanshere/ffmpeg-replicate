@@ -128,7 +128,7 @@ class Predictor(BasePredictor):
             ffmpeg_cmd.extend([
                 '-c:v', 'h264_nvenc',
                 '-preset', 'p4',
-                '-rc:v', 'vbr_hq',
+                '-rc:v', 'vbr',
                 '-cq:v', str(cqv),
                 '-y',
                 temp_output.name
