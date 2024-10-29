@@ -93,11 +93,11 @@ class Predictor(BasePredictor):
             translated_srt_file = temp_translated_srt.name
 
         output_files = {}
-        
+        print("🚀 开始处理视频...")
         start_time = time.time()
         # 使用临时文件处理视频
         with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_output:
-            # 使用NVIDIA GPU编码
+            # 使用NVIDIA GPU编码并添加水印
             ffmpeg_cmd = [
                 'ffmpeg', '-i', video_file,
                 '-vf', (
@@ -107,8 +107,11 @@ class Predictor(BasePredictor):
                     f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
                     f"subtitles={translated_srt_file}:fontsdir=fonts:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
                     f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
-                    f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
+                    f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}',"
+                    f"drawtext=text='VideoLingo':fontcolor=white:fontsize=24:x=10:y=10,"
+                    f"overlay=x=W-w-10:y=H-h-10"
                 ).encode('utf-8'),
+                '-i', 'watermark.png',  # 添加图片水印
                 '-c:v', 'h264_nvenc',
                 '-preset', 'p4',
                 '-rc:v', 'vbr',
