@@ -72,7 +72,8 @@ class Predictor(BasePredictor):
         source_srt_url: str = Input(description="原文字幕URL链接(srt格式)"),
         translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式)"),
         target_height: int = Input(description="输出视频高度", default=480),
-        watermark: bool = Input(description="是否添加水印", default=False)
+        watermark: bool = Input(description="是否添加水印", default=False),
+        cqv: int = Input(description="视频质量 0~51 越高压缩越厉害", default=32)
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
@@ -127,8 +128,8 @@ class Predictor(BasePredictor):
             ffmpeg_cmd.extend([
                 '-c:v', 'h264_nvenc',
                 '-preset', 'p4',
-                '-rc:v', 'vbr',
-                '-cq:v', '36',
+                '-rc:v', 'vbr_hq',
+                '-cq:v', str(cqv),
                 '-y',
                 temp_output.name
             ])
