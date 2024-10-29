@@ -72,6 +72,7 @@ class Predictor(BasePredictor):
         source_srt_url: str = Input(description="原文字幕URL链接(srt格式)"),
         translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式)"),
         target_height: int = Input(description="输出视频高度", default=480),
+        watermark: bool = Input(description="是否添加水印", default=False)
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
@@ -97,30 +98,41 @@ class Predictor(BasePredictor):
         start_time = time.time()
         # 使用临时文件处理视频
         with tempfile.NamedTemporaryFile(suffix=".mp4") as temp_output:
-            # 使用NVIDIA GPU编码并添加水印
-            ffmpeg_cmd = [
-                'ffmpeg', '-i', video_file,
-                '-vf', (
-                    f"scale=-2:{target_height},"
-                    f"subtitles={source_srt_file}:fontsdir=fonts:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
-                    f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
-                    f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
-                    f"subtitles={translated_srt_file}:fontsdir=fonts:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
-                    f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
-                    f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}',"
-                    f"drawtext=text='VideoLingo':fontcolor=white:fontsize=24:x=10:y=10,"
-                    f"overlay=x=W-w-10:y=H-h-10"
-                ).encode('utf-8'),
-                '-i', 'watermark.png',  # 添加图片水印
+            # 构建基础的字幕滤镜命令
+            subtitle_filter = (
+                f"scale=-2:{target_height},"
+                f"subtitles={source_srt_file}:fontsdir=fonts:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
+                f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
+                f"subtitles={translated_srt_file}:fontsdir=fonts:force_style='FontSize={TRANS_FONT_SIZE},FontName={TRANS_FONT_NAME},"
+                f"PrimaryColour={TRANS_FONT_COLOR},OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
+                f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
+            )
+
+            # 基础命令列表
+            ffmpeg_cmd = ['ffmpeg', '-i', video_file]
+
+            if watermark:
+                # 添加水印配置
+                filter_complex = (
+                    f"[0:v]{subtitle_filter}[v1];"
+                    f"[v1]drawtext=text='Made by VideoLingo':fontcolor=white:fontsize=20:"
+                    f"x=w-tw-10:y=20:bordercolor=black:borderw=1.5:alpha='if(lt(t,3),0,0.5)'[outv]"
+                ).encode('utf-8')
+                ffmpeg_cmd.extend(['-filter_complex', filter_complex, '-map', '[outv]', '-map', '0:a'])
+            else:
+                ffmpeg_cmd.extend(['-vf', subtitle_filter.encode('utf-8')])
+
+            # 添加通用的编码配置
+            ffmpeg_cmd.extend([
                 '-c:v', 'h264_nvenc',
                 '-preset', 'p4',
                 '-rc:v', 'vbr',
                 '-cq:v', '36',
                 '-y',
                 temp_output.name
-            ]
+            ])
 
-            
             print("🚀 使用NVIDIA GPU处理中...")
             process = subprocess.Popen(
                 ffmpeg_cmd,
