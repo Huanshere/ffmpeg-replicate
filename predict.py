@@ -88,6 +88,7 @@ class Predictor(BasePredictor):
         bgm_audio_url: str = Input(description="背景音乐音频URL链接(mp3格式) [dub]", default=None),
         dub_srt_url: str = Input(description="配音字幕URL链接(srt格式) [dub]", default=None),
         dub_volumn: float = Input(description="配音音量增益 [dub]", default=1.5),
+        bgm_volumn: float = Input(description="背景音乐音量减弱 [dub]", default=0.5),
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
@@ -168,7 +169,7 @@ class Predictor(BasePredictor):
                         f"[0:v]{subtitle_filter}[vtmp];"
                         f"[vtmp]drawtext=text='Made by VideoLingo':fontcolor=white:fontsize=20:"
                         f"x=w-tw-10:y=20:bordercolor=black:borderw=1.5:alpha='if(lt(t,3),0,0.5)'[v1];"
-                        f"[1:a]volume=1[a1];[2:a]volume={dub_volumn}[a2];"
+                        f"[1:a]volume={bgm_volumn}[a1];[2:a]volume={dub_volumn}[a2];"
                         f"[a1][a2]amix=inputs=2:duration=first:dropout_transition=3[a]"
                     )
 
