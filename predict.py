@@ -39,7 +39,7 @@ TRANS_FONT_SIZE = 22  # 翻译字幕字体大小
 SRC_FONT_COLOR = '&HFFFFFF'  # 源语言字幕字体颜色（白色）
 SRC_OUTLINE_COLOR = '&H000000'  # 源语言字幕轮廓颜色（黑色）
 SRC_OUTLINE_WIDTH = 1  # 源语言字幕轮廓宽度
-TRANS_FONT_COLOR = '&HFFFFFF'
+TRANS_FONT_COLOR = '&H00FFFF' # 翻译字幕字体颜色（黄色）
 TRANS_OUTLINE_COLOR = '&H000000'  # 翻译字幕轮廓颜色（黑色）
 TRANS_OUTLINE_WIDTH = 1  # 翻译字幕轮廓宽度
 
@@ -68,16 +68,16 @@ class Predictor(BasePredictor):
 
     def predict(
         self,
-        video_url: str = Input(description="视频URL链接"),
-        source_srt_url: str = Input(description="原文字幕URL链接(srt格式)", default=None),
-        translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式)"),
-        target_height: int = Input(description="输出视频高度", default=480),
+        mode: str = Input(description="模式, sub or dub", default="sub"),
         watermark: bool = Input(description="是否添加水印", default=False),
         cqv: int = Input(description="视频质量 0~51 越高压缩越厉害", default=32),
-        dub_audio_url: str = Input(description="配音音频URL链接(mp3格式)", default=None),
-        bgm_audio_url: str = Input(description="背景音乐音频URL链接(mp3格式)", default=None),
-        dub_volumn: float = Input(description="配音音量增益", default=1.5),
-        mode: str = Input(description="模式, sub or dub", default="sub")
+        target_height: int = Input(description="输出视频高度", default=480),
+        video_url: str = Input(description="视频URL链接 [sub,dub]"),
+        source_srt_url: str = Input(description="原文字幕URL链接(srt格式) [sub]", default=None),
+        translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式) [sub,dub]", default=None),
+        dub_audio_url: str = Input(description="配音音频URL链接(mp3格式) [dub]", default=None),
+        bgm_audio_url: str = Input(description="背景音乐音频URL链接(mp3格式) [dub]", default=None),
+        dub_volumn: float = Input(description="配音音量增益 [dub]", default=1.5),
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
