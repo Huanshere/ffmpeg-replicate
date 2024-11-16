@@ -81,8 +81,24 @@ class Predictor(BasePredictor):
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
-        video_data = requests.get(video_url)
-        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as temp_video:
+        # 首先从URL获取扩展名
+        url_suffix = os.path.splitext(video_url)[1].lower()
+        if url_suffix and url_suffix.startswith('.'):
+            suffix = url_suffix
+        else:
+            # 如果URL中没有扩展名，从Content-Type获取
+            video_data = requests.get(video_url)
+            content_type = video_data.headers.get('content-type', '')
+            if 'webm' in content_type:
+                suffix = '.webm'
+            elif 'mp4' in content_type:
+                suffix = '.mp4'
+            else:
+                suffix = '.mp4'  # 默认使用mp4
+        
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_video:
+            if not 'video_data' in locals():
+                video_data = requests.get(video_url)
             temp_video.write(video_data.content)
             video_file = temp_video.name
 
@@ -229,7 +245,7 @@ class Predictor(BasePredictor):
         if mode == "sub":
             os.remove(source_srt_file)
         elif mode == "dub":
-            os.remove(temp_dub_audio.name)
-            os.remove(temp_bgm_audio.name)
+            os.remove(dub_audio_file)
+            os.remove(bgm_audio_file)
 
         return output_files
