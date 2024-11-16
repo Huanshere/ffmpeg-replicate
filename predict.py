@@ -215,9 +215,9 @@ class Predictor(BasePredictor):
         
         # 清理临时文件
         os.remove(video_file)
-        os.remove(translated_srt_file)
         if mode == "sub":
             os.remove(source_srt_file)
+            os.remove(translated_srt_file)
         elif mode == "dub":
             os.remove(dub_audio_file)
             os.remove(bgm_audio_file)
