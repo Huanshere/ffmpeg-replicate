@@ -54,6 +54,15 @@ TRANS_FONT_PATH = "fonts/MiSans-Medium.ttf"
 FONT_NAME = 'HelveticaNeue-MediumCond'
 TRANS_FONT_NAME = 'MiSans Medium'
 
+def download_file(url, suffix, description=None):
+    """通用文件下载函数"""
+    if description:
+        print(f"📥 Downloading {description}...")
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_file:
+        response = requests.get(url)
+        temp_file.write(response.content)
+        return temp_file.name
+
 class Predictor(BasePredictor):
     def setup(self):
         """初始化设置"""
@@ -74,62 +83,27 @@ class Predictor(BasePredictor):
         target_height: int = Input(description="输出视频高度", default=480),
         video_url: str = Input(description="视频URL链接 [sub,dub]"),
         source_srt_url: str = Input(description="原文字幕URL链接(srt格式) [sub]", default=None),
-        translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式) [sub,dub]", default=None),
+        translated_srt_url: str = Input(description="翻译字幕URL链接(srt格式) [sub]", default=None),
         dub_audio_url: str = Input(description="配音音频URL链接(mp3格式) [dub]", default=None),
         bgm_audio_url: str = Input(description="背景音乐音频URL链接(mp3格式) [dub]", default=None),
+        dub_srt_url: str = Input(description="配音字幕URL链接(srt格式) [dub]", default=None),
         dub_volumn: float = Input(description="配音音量增益 [dub]", default=1.5),
     ) -> dict:
         # 下载视频
         print("📥 Downloading video...")
-        # 首先从URL获取扩展名
-        url_suffix = os.path.splitext(video_url)[1].lower()
-        if url_suffix and url_suffix.startswith('.'):
-            suffix = url_suffix
-        else:
-            # 如果URL中没有扩展名，从Content-Type获取
-            video_data = requests.get(video_url)
-            content_type = video_data.headers.get('content-type', '')
-            if 'webm' in content_type:
-                suffix = '.webm'
-            elif 'mp4' in content_type:
-                suffix = '.mp4'
-            else:
-                suffix = '.mp4'  # 默认使用mp4
-        
-        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temp_video:
-            if not 'video_data' in locals():
-                video_data = requests.get(video_url)
-            temp_video.write(video_data.content)
-            video_file = temp_video.name
+        suffix = os.path.splitext(video_url)[1].lower()
+        if not suffix or not suffix.startswith('.'):
+            suffix = '.mp4'  # 默认使用mp4
+        video_file = download_file(video_url, suffix)
 
-        # 下载字幕文件
-        print("📥 Downloading translated subtitles...")
-        with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as temp_translated_srt:
-            translated_srt_data = requests.get(translated_srt_url)
-            temp_translated_srt.write(translated_srt_data.content)
-            translated_srt_file = temp_translated_srt.name
-        
-        
         if mode == "sub":
-            print("📥 Downloading source subtitles...")
-            with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as temp_source_srt:
-                source_srt_data = requests.get(source_srt_url)
-                temp_source_srt.write(source_srt_data.content)
-                source_srt_file = temp_source_srt.name
+            source_srt_file = download_file(source_srt_url, ".srt", "source subtitles")
+            translated_srt_file = download_file(translated_srt_url, ".srt", "translated subtitles")
 
         if mode == "dub":
-            print("📥 Downloading dub audio...")
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_dub_audio:
-                dub_audio_data = requests.get(dub_audio_url)
-                temp_dub_audio.write(dub_audio_data.content)
-                dub_audio_file = temp_dub_audio.name
-            print("📥 Downloading bgm audio...")
-            with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as temp_bgm_audio:
-                bgm_audio_data = requests.get(bgm_audio_url)
-                temp_bgm_audio.write(bgm_audio_data.content)
-                bgm_audio_file = temp_bgm_audio.name
-
-        
+            dub_audio_file = download_file(dub_audio_url, ".mp3", "dub audio")
+            bgm_audio_file = download_file(bgm_audio_url, ".mp3", "bgm audio")
+            dub_srt_file = download_file(dub_srt_url, ".srt", "dub subtitles")
 
         output_files = {}
         print("🚀 开始处理视频...")
@@ -176,7 +150,7 @@ class Predictor(BasePredictor):
                     # 构建配音模式的字幕滤镜
                 subtitle_filter = (
                     f"scale=-2:{target_height},"
-                    f"subtitles={translated_srt_file}:fontsdir=fonts:force_style='FontSize={TRANS_FONT_SIZE},"
+                    f"subtitles={dub_srt_file}:fontsdir=fonts:force_style='FontSize={TRANS_FONT_SIZE},"
                     f"FontName={TRANS_FONT_NAME},PrimaryColour={TRANS_FONT_COLOR},"
                     f"OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
                     f"MarginV={TRANS_MARGIN_V},BorderStyle=4,BackColour={TRANS_BG_COLOR},Spacing={TRANS_SPACING}'"
@@ -200,8 +174,8 @@ class Predictor(BasePredictor):
 
                 ffmpeg_cmd = [
                     'ffmpeg', '-i', video_file,
-                    '-i', temp_bgm_audio.name,
-                    '-i', temp_dub_audio.name,
+                    '-i', bgm_audio_file,
+                    '-i', dub_audio_file,
                     '-filter_complex', filter_complex.encode('utf-8'),
                     '-map', '[v1]', '-map', '[a]',
                     '-c:v', 'h264_nvenc',
