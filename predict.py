@@ -87,6 +87,7 @@ class Predictor(BasePredictor):
         dub_audio_url: str = Input(description="配音音频URL链接(mp3格式) [dub]", default=None),
         bgm_audio_url: str = Input(description="背景音乐音频URL链接(mp3格式) [dub]", default=None),
         dub_srt_url: str = Input(description="配音字幕URL链接(srt格式) [dub]", default=None),
+        dub_src_srt_url: str = Input(description="配音源字幕URL链接(srt格式) [dub]", default=None),
         dub_volumn: float = Input(description="配音音量增益 [dub]", default=1.5),
         bgm_volumn: float = Input(description="背景音乐音量减弱 [dub]", default=0.5),
     ) -> dict:
@@ -105,6 +106,7 @@ class Predictor(BasePredictor):
             dub_audio_file = download_file(dub_audio_url, ".mp3", "dub audio")
             bgm_audio_file = download_file(bgm_audio_url, ".mp3", "bgm audio")
             dub_srt_file = download_file(dub_srt_url, ".srt", "dub subtitles")
+            dub_src_srt_file = download_file(dub_src_srt_url, ".srt", "dub source subtitles")
 
         output_files = {}
         print("🚀 开始处理视频...")
@@ -151,6 +153,9 @@ class Predictor(BasePredictor):
                     # 构建配音模式的字幕滤镜
                 subtitle_filter = (
                     f"scale=-2:{target_height},"
+                    f"subtitles={dub_src_srt_file}:fontsdir=fonts:force_style='FontSize={SRC_FONT_SIZE},FontName={FONT_NAME},"
+                    f"PrimaryColour={SRC_FONT_COLOR},OutlineColour={SRC_OUTLINE_COLOR},OutlineWidth={SRC_OUTLINE_WIDTH},"
+                    f"MarginV={SRC_MARGIN_V},BorderStyle=1',"
                     f"subtitles={dub_srt_file}:fontsdir=fonts:force_style='FontSize={TRANS_FONT_SIZE},"
                     f"FontName={TRANS_FONT_NAME},PrimaryColour={TRANS_FONT_COLOR},"
                     f"OutlineColour={TRANS_OUTLINE_COLOR},OutlineWidth={TRANS_OUTLINE_WIDTH},"
@@ -215,12 +220,14 @@ class Predictor(BasePredictor):
             output_files["video"] = BytesIO(open(temp_output.name, "rb").read())
         
         # 清理临时文件
-        os.remove(video_file)
-        if mode == "sub":
-            os.remove(source_srt_file)
-            os.remove(translated_srt_file)
-        elif mode == "dub":
-            os.remove(dub_audio_file)
-            os.remove(bgm_audio_file)
+        # os.remove(video_file)
+        # if mode == "sub":
+        #     os.remove(source_srt_file)
+        #     os.remove(translated_srt_file)
+        # elif mode == "dub":
+        #     os.remove(dub_audio_file)
+        #     os.remove(bgm_audio_file)
+        #     os.remove(dub_srt_file)
+        #     os.remove(dub_src_srt_file)
 
         return output_files
